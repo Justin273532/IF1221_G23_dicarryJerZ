@@ -28,11 +28,11 @@ mainkanKartu(_) :-
     write('Nomor urut kartu harus berupa bilangan bulat positif.'), nl,
     fail.
 
-handle_wild_color_choice(card(hitam, wild)) :-
+handle_wild_color_choice(kartu(hitam, wild)) :-
     choose_color_for_wild(Color),
     set_active_color(Color),
     write('Warna aktif berubah menjadi '), write(Color), write('.'), nl.
-handle_wild_color_choice(card(hitam, wild_draw_four)) :-
+handle_wild_color_choice(kartu(hitam, wild_draw_four)) :-
     choose_color_for_wild(Color),
     set_active_color(Color),
     write('Warna aktif berubah menjadi '), write(Color), write('.'), nl.
@@ -43,7 +43,7 @@ choose_color_for_wild(Color) :-
     repeat,
     write('Pilih warna aktif baru (merah/kuning/hijau/biru): '),
     read_term(user_input, Term, []),
-    term_to_name_atom(Term, Input),
+    term_to_atom(Term, Input),
     (   Input = merah -> Color = merah, !;
         Input = kuning -> Color = kuning, !; 
         Input = hijau -> Color = hijau, !; 
