@@ -11,7 +11,7 @@
 │   ├── file1.pl
 │   ├── file2.pl
 │   └── main.pl
-└── docs                # Tempat menyimpan semua proses pengerjaan dan laporan
+└── docs               # Tempat menyimpan semua proses pengerjaan dan laporan
     ├── Milestone1_G23.pdf
     ├── Milestone2_G23.pdf
     └── Laporan.pdf
