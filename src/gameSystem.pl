@@ -1,3 +1,35 @@
+appendd([], L, L).
+appendd([H|T], L, [H|R]) :-
+    appendd(T, L, R).
+
+reversee(List, Reversed) :-
+    reversee_acc(List, [], Reversed).
+reversee_acc([], Acc, Acc).
+reversee_acc([H|T], Acc, Reversed) :-
+    reversee_acc(T, [H|Acc], Reversed).
+
+numeric_value(0).
+numeric_value(1).
+numeric_value(2).
+numeric_value(3).
+numeric_value(4).
+numeric_value(5).
+numeric_value(6).
+numeric_value(7).
+numeric_value(8).
+numeric_value(9).
+
+valid_player_count(2).
+valid_player_count(3).
+valid_player_count(4).
+
+non_empty_list([_|_]).
+
+normal_color(merah).
+normal_color(kuning).
+normal_color(hijau).
+normal_color(biru).
+
 startGame :-
     reset_game_state,
     randomize,
@@ -68,7 +100,7 @@ set_active_color(Color) :-
 advance_turn :-
     turn_order([Current, Next|Rest]),
     retractall(turn_order(_)),
-    append([Next|Rest], [Current], NewOrder),
+    appendd([Next|Rest], [Current], NewOrder),
     assertz(turn_order(NewOrder)),
     retractall(current_player(_)),
     assertz(current_player(Next)),
@@ -104,9 +136,9 @@ build_deck(Deck) :-
     build_kartu_aksi(Colors, [skip, reverse, draw_two], ActionCards),
     build_kartu_repeat(4, kartu(hitam, wild), WildCards),
     build_kartu_repeat(4, kartu(hitam, wild_draw_four), WildDrawFourCards),
-    append(NumberCards, ActionCards, Temp1),
-    append(Temp1, WildCards, Temp2),
-    append(Temp2, WildDrawFourCards, Deck).
+    appendd(NumberCards, ActionCards, Temp1),
+    appendd(Temp1, WildCards, Temp2),
+    appendd(Temp2, WildDrawFourCards, Deck).
 
 colors([merah, kuning, hijau, biru]).
 numbers([0,1,2,3,4,5,6,7,8,9]).
@@ -115,7 +147,7 @@ build_kartu_angka([], _, []).
 build_kartu_angka([Color|RestColors], Numbers, Cards) :-
     build_kartu_angka_for_color(Color, Numbers, Cards1),
     build_kartu_angka(RestColors, Numbers, Cards2),
-    append(Cards1, Cards2, Cards).
+    appendd(Cards1, Cards2, Cards).
 
 build_kartu_angka_for_color(_, [], []).
 build_kartu_angka_for_color(Color, [N|Rest], [kartu(Color, N)|Cards]) :-
@@ -125,7 +157,7 @@ build_kartu_aksi([], _, []).
 build_kartu_aksi([Color|RestColors], Types, Cards) :-
     build_kartu_aksi_for_color(Color, Types, Cards1),
     build_kartu_aksi(RestColors, Types, Cards2),
-    append(Cards1, Cards2, Cards).
+    appendd(Cards1, Cards2, Cards).
 
 build_kartu_aksi_for_color(_, [], []).
 build_kartu_aksi_for_color(Color, [Type|Rest], [kartu(Color, Type)|Cards]) :-
@@ -150,7 +182,7 @@ take_n_cards(N, [Card|Rest], [Card|Taken], Remaining) :-
 
 choose_init_discard(Deck0, Card, Remaining) :-
     collect_kartu_numerik(Deck0, NumericCards),
-    NumericCards \= [],
+    non_empty_list(NumericCards),
     random_choice(NumericCards, Card),
     remove_first(Card, Deck0, Remaining),
     !.
@@ -158,9 +190,7 @@ choose_init_discard([Card|Remaining], Card, Remaining).
 
 collect_kartu_numerik([], []).
 collect_kartu_numerik([kartu(Color, Num)|Rest], [kartu(Color, Num)|Cards]) :-
-    integer(Num),
-    Num >= 0,
-    Num =< 9,
+    numeric_value(Num),
     collect_kartu_numerik(Rest, Cards).
 collect_kartu_numerik([_|Rest], Cards) :-
     collect_kartu_numerik(Rest, Cards).
@@ -209,25 +239,25 @@ playable_against_top(kartu(hitam, wild), _, _).
 playable_against_top(kartu(hitam, wild_draw_four), _, _).
 
 playable_against_top(kartu(Color, _), kartu(hitam, wild), ActiveColor) :-
-    Color == ActiveColor.
+    Color = ActiveColor.
 playable_against_top(kartu(Color, _), kartu(hitam, wild_draw_four), ActiveColor) :-
-    Color == ActiveColor.
+    Color = ActiveColor.
 
 playable_against_top(kartu(Color, skip), kartu(_, skip), _) :-
-    Color \== hitam.
+    normal_color(Color).
 playable_against_top(kartu(Color, reverse), kartu(_, reverse), _) :-
-    Color \== hitam.
+    normal_color(Color).
 playable_against_top(kartu(Color, draw_two), kartu(_, draw_two), _) :-
-    Color \== hitam.
+    normal_color(Color).
 
 playable_against_top(kartu(Color, _), kartu(TopColor, _), _) :-
-    Color == TopColor,
-    Color \== hitam.
+    Color = TopColor,
+    normal_color(Color).
 
 playable_against_top(kartu(_, Num), kartu(_, TopNum), _) :-
-    integer(Num),
-    integer(TopNum),
-    Num =:= TopNum.
+    numeric_value(Num),
+    numeric_value(TopNum),
+    Num = TopNum.
 
 replace_hand_after_play(Player, Index, PlayedCard, NewHand) :-
     get_current_hand(Player, OldHand),
@@ -235,7 +265,7 @@ replace_hand_after_play(Player, Index, PlayedCard, NewHand) :-
 
 add_card_to_hand(Player, Card) :-
     get_current_hand(Player, OldHand),
-    append(OldHand, [Card], NewHand),
+    appendd(OldHand, [Card], NewHand),
     set_current_hand(Player, NewHand).
 
 draw_from_pile(Card) :-
@@ -255,9 +285,7 @@ discard_color(kartu(hitam, wild), hitam).
 discard_color(kartu(hitam, wild_draw_four), hitam).
 
 card_points(kartu(_, Num), Num) :-
-    integer(Num),
-    Num >= 0,
-    Num =< 9, !.
+    numeric_value(Num), !.
 card_points(kartu(_, skip), 10).
 card_points(kartu(_, reverse), 10).
 card_points(kartu(_, draw_two), 10).
@@ -265,7 +293,6 @@ card_points(kartu(_, wild), 20).
 card_points(kartu(_, wild_draw_four), 20).
 
 mainkanKartu(Index) :-
-    integer(Index),
     Index > 0,
     get_current_player(Player),
     get_current_hand(Player, Hand),

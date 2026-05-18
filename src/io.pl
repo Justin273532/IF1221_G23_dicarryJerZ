@@ -2,7 +2,7 @@ ask_player_count(NumPlayers) :-
     repeat,
     write('Masukkan jumlah pemain: '),
     read_term(user_input, Term, []),
-    (   integer(Term), Term >= 2, Term =< 4
+    (   valid_player_count(Term)
     ->  NumPlayers = Term,
         !
     ;   nl,
@@ -12,7 +12,7 @@ ask_player_count(NumPlayers) :-
 
 gather_nama(NumPlayers, Names) :-
     gather_nama(1, NumPlayers, [], RevNames),
-    reverse(RevNames, Names).
+    reversee(RevNames, Names).
 
 gather_nama(I, NumPlayers, Acc, Names) :-
     I =< NumPlayers,
@@ -27,9 +27,8 @@ baca_nama(I, Acc, Name) :-
     baca_nama_loop(Acc, Name).
 
 baca_nama_loop(Acc, Name) :-
-    read_term(user_input, Term, []),
-    term_to_atom(Term, Candidate),
-    (   Candidate == '' ->
+    read_term(user_input, Candidate, []),
+    (   Candidate = '' ->
         write('Nama tidak boleh kosong. Masukkan nama lain: '),
         baca_nama_loop(Acc, Name);
         name_exists(Candidate, Acc) -> write('Nama sudah digunakan. Masukkan nama lain: '),
@@ -37,21 +36,8 @@ baca_nama_loop(Acc, Name) :-
         Name = Candidate
     ).
 
-term_to_atom(Term, Atom) :-
-    (   atom(Term) -> Atom = Term;
-        number(Term) -> number_codes(Term, Codes),
-        atom_codes(Atom, Codes);
-        codes_list(Term) -> atom_codes(Atom, Term);
-        fail
-    ).
-
-codes_list([]).
-codes_list([H|T]) :-
-    integer(H),
-    codes_list(T).
-
 print_card(kartu(Color, Num)) :-
-    integer(Num),
+    numeric_value(Num),
     !,
     write(Color), write('-'), write(Num).
 print_card(kartu(Color, Type)) :- write(Color), write('-'), write(Type).
@@ -74,11 +60,10 @@ choose_color_for_wild(Color) :-
     repeat,
     write('Pilih warna aktif baru (merah/kuning/hijau/biru): '),
     read_term(user_input, Term, []),
-    term_to_atom(Term, Input),
-    (   Input = merah -> Color = merah, !;
-        Input = kuning -> Color = kuning, !;
-        Input = hijau -> Color = hijau, !;
-        Input = biru -> Color = biru, !;
+    (   Term = merah -> Color = merah, !;
+        Term = kuning -> Color = kuning, !;
+        Term = hijau -> Color = hijau, !;
+        Term = biru -> Color = biru, !;
         nl,
         write('Warna tidak valid.'), nl,
         fail
