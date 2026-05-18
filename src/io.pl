@@ -40,7 +40,13 @@ print_card(kartu(Color, Num)) :-
     numeric_value(Num),
     !,
     write(Color), write('-'), write(Num).
-print_card(kartu(Color, Type)) :- write(Color), write('-'), write(Type).
+print_card(kartu(Color, Type)) :-
+    write(Color), write('-'), write(Type).
+
+print_card_terlihat(kartu(hitam, Type)) :-
+    write('hitam-'), write(Type), write(' (disembunyikan)'), !.
+print_card_terlihat(Card) :-
+    print_card(Card).
 
 print_card_list([]).
 print_card_list([Card]) :- print_card(Card).
@@ -60,11 +66,8 @@ choose_color_for_wild(Color) :-
     repeat,
     write('Pilih warna aktif baru (merah/kuning/hijau/biru): '),
     read_term(user_input, Term, []),
-    (   Term = merah -> Color = merah, !;
-        Term = kuning -> Color = kuning, !;
-        Term = hijau -> Color = hijau, !;
-        Term = biru -> Color = biru, !;
-        nl,
+    (   warna_valid(Term) -> Color = Term, !
+    ;   nl,
         write('Warna tidak valid.'), nl,
         fail
     ).
@@ -72,12 +75,15 @@ choose_color_for_wild(Color) :-
 lihatCommand :-
     nl,
     write('Aksi utama yang tersedia:'), nl,
-    write('1. mainkanKartu(NomorUrut)'), nl,
-    write('2. ambilKartu'), nl, nl,
+    write('1. mainkanKartu(NomorUrutKartuDiTangan)'), nl,
+    write('2. ambilKartu'), nl,
+    write('3. tantang'), nl, nl,
     write('Aksi pendukung yang tersedia:'), nl,
     write('1. lihatCommand'), nl,
     write('2. lihatKartu'), nl,
-    write('3. cekInfo'), nl.
+    write('3. cekInfo'), nl,
+    write('4. uni(NomorUrutKartuDiTangan)'), nl,
+    write('5. tangkap(NamaPemain)'), nl.
 
 lihatKartu :-
     get_current_player(Player),
@@ -89,18 +95,23 @@ lihatKartu :-
 print_numbered_cards([], _).
 print_numbered_cards([Card|Rest], N) :-
     write(N), write('. '),
-    print_card(Card), nl, nl,
+    print_card_terlihat(Card), nl,
     N1 is N + 1,
     print_numbered_cards(Rest, N1).
 
 cekInfo :-
     get_top_card(TopCard),
-    player_names(Names),
+    get_active_color(ActiveColor),
+    turn_order(Order),
+    direction(Direction),
     nl,
     write('Kartu discard top: '),
     print_card(TopCard), nl,
+    write('Warna aktif: '), write(ActiveColor), nl,
+    write('Arah permainan: '), write(Direction), nl,
     write('Urutan pemain: '),
-    print_name_list(Names), nl, nl,
+    print_name_list(Order), nl, nl,
+    player_names(Names),
     print_player_info(Names, 1).
 
 print_player_info([], _).
