@@ -1,35 +1,3 @@
-appendd([], L, L).
-appendd([H|T], L, [H|R]) :-
-    appendd(T, L, R).
-
-reversee(List, Reversed) :-
-    reversee_acc(List, [], Reversed).
-reversee_acc([], Acc, Acc).
-reversee_acc([H|T], Acc, Reversed) :-
-    reversee_acc(T, [H|Acc], Reversed).
-
-numeric_value(0).
-numeric_value(1).
-numeric_value(2).
-numeric_value(3).
-numeric_value(4).
-numeric_value(5).
-numeric_value(6).
-numeric_value(7).
-numeric_value(8).
-numeric_value(9).
-
-valid_player_count(2).
-valid_player_count(3).
-valid_player_count(4).
-
-non_empty_list([_|_]).
-
-normal_color(merah).
-normal_color(kuning).
-normal_color(hijau).
-normal_color(biru).
-
 startGame :-
     reset_game_state,
     randomize,
@@ -49,7 +17,7 @@ startGame :-
     assertz(discard_top(DiscardCard)),
     discard_color(DiscardCard, TopColor),
     assertz(active_color(TopColor)),
-    assertz(direction(right)),
+    assertz(direction(kanan)),
     store_player_hands(PlayerHands),
     nl,
     write('Urutan pemain: '), print_name_list(ShuffledNames), nl,
@@ -71,41 +39,99 @@ reset_game_state :-
     retractall(draw_pile(_)),
     retractall(discard_top(_)),
     retractall(active_color(_)),
-    retractall(direction(_)).
+    retractall(direction(_)),
+    retractall(status_uni(_)),
+    retractall(pelanggar_uni(_)),
+    retractall(pending_draw_two(_)),
+    retractall(pending_wild_draw_four(_, _, _, _)),
+    retractall(aksi_utama_selesai(_)).
 
-get_current_player(Player) :-
-    current_player(Player), !.
-
-get_current_hand(Player, Hand) :-
-    player_hand(Player, Hand), !.
+get_current_player(Player) :- current_player(Player), !.
+get_current_hand(Player, Hand) :- player_hand(Player, Hand), !.
 
 set_current_hand(Player, Hand) :-
     retractall(player_hand(Player, _)),
     assertz(player_hand(Player, Hand)).
 
-get_top_card(Card) :-
-    discard_top(Card), !.
-
+get_top_card(Card) :- discard_top(Card), !.
 set_top_card(Card) :-
     retractall(discard_top(_)),
     assertz(discard_top(Card)).
 
-get_active_color(Color) :-
-    active_color(Color), !.
-
+get_active_color(Color) :- active_color(Color), !.
 set_active_color(Color) :-
     retractall(active_color(_)),
     assertz(active_color(Color)).
 
+set_current_player(Player) :-
+    retractall(current_player(_)),
+    assertz(current_player(Player)).
+
+bersihkan_pending :-
+    retractall(pending_draw_two(_)),
+    retractall(pending_wild_draw_four(_, _, _, _)).
+
+bersihkan_uni_pemain(Player) :-
+    retractall(status_uni(Player)),
+    retractall(pelanggar_uni(Player)).
+
+hapus_aksi_utama(Player) :-
+    retractall(aksi_utama_selesai(Player)).
+
+tandai_aksi_utama(Player) :-
+    retractall(aksi_utama_selesai(Player)),
+    assertz(aksi_utama_selesai(Player)).
+
+sudah_aksi_utama(Player) :-
+    aksi_utama_selesai(Player), !.
+
 advance_turn :-
+    maju_satu_giliran(Next),
+    hapus_aksi_utama(Next),
+    nl,
+    write('Giliran '), write(Next), write('.'), nl.
+
+advance_turn_silent(Next) :-
+    maju_satu_giliran(Next),
+    hapus_aksi_utama(Next).
+
+maju_satu_giliran(Next) :-
     turn_order([Current, Next|Rest]),
     retractall(turn_order(_)),
     appendd([Next|Rest], [Current], NewOrder),
     assertz(turn_order(NewOrder)),
-    retractall(current_player(_)),
-    assertz(current_player(Next)),
+    set_current_player(Next),
+    !.
+maju_satu_giliran(Current) :-
+    turn_order([Current]),
+    set_current_player(Current).
+
+pemain_berikutnya(Next) :-
+    turn_order([_, Next|_]), !.
+pemain_berikutnya(Player) :-
+    current_player(Player).
+
+balik_arah_permainan :-
+    direction(kanan), !,
+    retractall(direction(_)),
+    assertz(direction(kiri)),
+    turn_order([Current|Rest]),
+    reversee(Rest, RevRest),
+    retractall(turn_order(_)),
+    assertz(turn_order([Current|RevRest])).
+balik_arah_permainan :-
+    retractall(direction(_)),
+    assertz(direction(kanan)),
+    turn_order([Current|Rest]),
+    reversee(Rest, RevRest),
+    retractall(turn_order(_)),
+    assertz(turn_order([Current|RevRest])).
+
+lewati_pemain :-
+    advance_turn_silent(Skipped),
     nl,
-    write('Giliran '), write(Next), write('.'), nl.
+    write(Skipped), write(' kehilangan giliran.'), nl,
+    advance_turn.
 
 player_index(Player, Index) :-
     player_names(Names),
@@ -118,16 +144,7 @@ player_index_in_list(Player, [_|Rest], Cur, Index) :-
 
 count_cards(Player, Count) :-
     player_hand(Player, Hand),
-    list_length(Hand, Count).
-
-list_length([], 0).
-list_length([_|Rest], Count) :-
-    list_length(Rest, Count0),
-    Count is Count0 + 1.
-
-name_exists(Name, [Name|_]) :- !.
-name_exists(Name, [_|Rest]) :-
-    name_exists(Name, Rest).
+    panjang(Hand, Count).
 
 build_deck(Deck) :-
     colors(Colors),
@@ -163,7 +180,7 @@ build_kartu_aksi_for_color(_, [], []).
 build_kartu_aksi_for_color(Color, [Type|Rest], [kartu(Color, Type)|Cards]) :-
     build_kartu_aksi_for_color(Color, Rest, Cards).
 
-build_kartu_repeat(0, _, []).
+build_kartu_repeat(0, _, []) :- !.
 build_kartu_repeat(N, Card, [Card|Rest]) :-
     N > 0,
     N1 is N - 1,
@@ -191,26 +208,16 @@ choose_init_discard([Card|Remaining], Card, Remaining).
 collect_kartu_numerik([], []).
 collect_kartu_numerik([kartu(Color, Num)|Rest], [kartu(Color, Num)|Cards]) :-
     numeric_value(Num),
-    collect_kartu_numerik(Rest, Cards).
+    collect_kartu_numerik(Rest, Cards), !.
 collect_kartu_numerik([_|Rest], Cards) :-
     collect_kartu_numerik(Rest, Cards).
 
 random_choice([X], X) :- !.
 random_choice(List, Choice) :-
-    list_length(List, Len),
+    panjang(List, Len),
     Hi is Len + 1,
     random(1, Hi, Index),
     nth_element(Index, List, Choice).
-
-nth_element(1, [X|_], X) :- !.
-nth_element(N, [_|Rest], X) :-
-    N > 1,
-    N1 is N - 1,
-    nth_element(N1, Rest, X).
-
-remove_first(X, [X|Rest], Rest) :- !.
-remove_first(X, [Y|Rest], [Y|Rest2]) :-
-    remove_first(X, Rest, Rest2).
 
 shuffle_list(List, Shuffled) :-
     shuffle_list_acc(List, [], Shuffled).
@@ -218,46 +225,11 @@ shuffle_list(List, Shuffled) :-
 shuffle_list_acc([], Acc, Acc).
 shuffle_list_acc([X], Acc, [X|Acc]) :- !.
 shuffle_list_acc(List, Acc, Shuffled) :-
-    list_length(List, Len),
+    panjang(List, Len),
     Hi is Len + 1,
     random(1, Hi, Index),
     remove_nth(Index, List, Elem, Rest),
     shuffle_list_acc(Rest, [Elem|Acc], Shuffled).
-
-remove_nth(1, [X|Xs], X, Xs) :- !.
-remove_nth(N, [X|Xs], Elem, [X|Rest]) :-
-    N > 1,
-    N1 is N - 1,
-    remove_nth(N1, Xs, Elem, Rest).
-
-playable_card(Card) :-
-    get_top_card(TopCard),
-    get_active_color(ActiveColor),
-    playable_against_top(Card, TopCard, ActiveColor).
-
-playable_against_top(kartu(hitam, wild), _, _).
-playable_against_top(kartu(hitam, wild_draw_four), _, _).
-
-playable_against_top(kartu(Color, _), kartu(hitam, wild), ActiveColor) :-
-    Color = ActiveColor.
-playable_against_top(kartu(Color, _), kartu(hitam, wild_draw_four), ActiveColor) :-
-    Color = ActiveColor.
-
-playable_against_top(kartu(Color, skip), kartu(_, skip), _) :-
-    normal_color(Color).
-playable_against_top(kartu(Color, reverse), kartu(_, reverse), _) :-
-    normal_color(Color).
-playable_against_top(kartu(Color, draw_two), kartu(_, draw_two), _) :-
-    normal_color(Color).
-
-playable_against_top(kartu(Color, _), kartu(TopColor, _), _) :-
-    Color = TopColor,
-    normal_color(Color).
-
-playable_against_top(kartu(_, Num), kartu(_, TopNum), _) :-
-    numeric_value(Num),
-    numeric_value(TopNum),
-    Num = TopNum.
 
 replace_hand_after_play(Player, Index, PlayedCard, NewHand) :-
     get_current_hand(Player, OldHand),
@@ -266,11 +238,25 @@ replace_hand_after_play(Player, Index, PlayedCard, NewHand) :-
 add_card_to_hand(Player, Card) :-
     get_current_hand(Player, OldHand),
     appendd(OldHand, [Card], NewHand),
-    set_current_hand(Player, NewHand).
+    set_current_hand(Player, NewHand),
+    count_cards(Player, Count),
+    (Count = 1 -> true ; bersihkan_uni_pemain(Player)).
 
-draw_from_pile(Card) :-
+ambil_satu_kartu(Card) :-
     retract(draw_pile([Card|Rest])),
     assertz(draw_pile(Rest)).
+
+draw_from_pile(Card) :-
+    ambil_satu_kartu(Card).
+
+ambil_banyak_kartu(Player, 0, []) :-
+    Player = Player, !.
+ambil_banyak_kartu(Player, N, [Card|Rest]) :-
+    N > 0,
+    ambil_satu_kartu(Card),
+    add_card_to_hand(Player, Card),
+    N1 is N - 1,
+    ambil_banyak_kartu(Player, N1, Rest).
 
 draw_n_cards(0, Acc, Acc) :- !.
 draw_n_cards(N, Acc0, Acc) :-
@@ -281,67 +267,168 @@ draw_n_cards(N, Acc0, Acc) :-
 
 discard_color(kartu(Color, _), Color).
 
-discard_color(kartu(hitam, wild), hitam).
-discard_color(kartu(hitam, wild_draw_four), hitam).
-
-card_points(kartu(_, Num), Num) :-
-    numeric_value(Num), !.
-card_points(kartu(_, skip), 10).
-card_points(kartu(_, reverse), 10).
-card_points(kartu(_, draw_two), 10).
-card_points(kartu(_, wild), 20).
-card_points(kartu(_, wild_draw_four), 20).
-
+mainkanKartu(Index) :-
+    Index > 0,
+    get_current_player(Player),
+    sudah_aksi_utama(Player), !,
+    nl,
+    write('Aksi utama pada giliran ini sudah dilakukan.'), nl,
+    fail.
 mainkanKartu(Index) :-
     Index > 0,
     get_current_player(Player),
     get_current_hand(Player, Hand),
     (   nth_element(Index, Hand, Card) ->
-        (   playable_card(Card) ->  replace_hand_after_play(Player, Index, Card, NewHand),
-            set_current_hand(Player, NewHand),
-            set_top_card(Card),
-            discard_color(Card, Color0),
-            set_active_color(Color0),
-            nl,
-            write(Player), write(' memainkan kartu: '),
-            print_card(Card), nl,
-            handle_wild_color_choice(Card),
-            advance_turn;
-            nl,
+        (   kartu_valid_dimainkan(Player, Index, Card, NewHand) ->
+            mainkan_kartu_terpilih(Player, Card, NewHand, biasa)
+        ;   nl,
             write('Kartu tersebut tidak valid untuk dimainkan saat ini.'), nl,
             fail
-        );
-        nl,
+        )
+    ;   nl,
         write('Nomor urut kartu '), write(Index), write(' tidak valid.'), nl,
         fail
     ).
-
 mainkanKartu(_) :-
     nl,
     write('Nomor urut kartu harus berupa bilangan bulat positif.'), nl,
     fail.
 
-handle_wild_color_choice(kartu(hitam, wild)) :-
-    choose_color_for_wild(Color),
-    set_active_color(Color),
-    write('Warna aktif berubah menjadi '), write(Color), write('.'), nl.
-handle_wild_color_choice(kartu(hitam, wild_draw_four)) :-
-    choose_color_for_wild(Color),
-    set_active_color(Color),
-    write('Warna aktif berubah menjadi '), write(Color), write('.'), nl.
-handle_wild_color_choice(_) :-
-    true.
+uni(Index) :-
+    Index > 0,
+    get_current_player(Player),
+    sudah_aksi_utama(Player), !,
+    nl,
+    write('Aksi utama pada giliran ini sudah dilakukan.'), nl,
+    fail.
+uni(Index) :-
+    Index > 0,
+    get_current_player(Player),
+    get_current_hand(Player, Hand),
+    panjang(Hand, Count),
+    (   Count = 2,
+        nth_element(Index, Hand, Card),
+        kartu_valid_dimainkan(Player, Index, Card, NewHand) ->
+            mainkan_kartu_terpilih(Player, Card, NewHand, uni)
+    ;   nl,
+        write('Perintah UNI tidak valid.'), nl,
+        write(Player), write(' mendapatkan 1 kartu penalti.'), nl,
+        ambil_banyak_kartu(Player, 1, _),
+        tandai_aksi_utama(Player),
+        advance_turn
+    ).
+uni(_) :-
+    nl,
+    write('Nomor urut kartu harus berupa bilangan bulat positif.'), nl,
+    fail.
 
 ambilKartu :-
     get_current_player(Player),
-    (   draw_pile([Card|_]) ->  draw_from_pile(Card),
-        add_card_to_hand(Player, Card),
-        nl,
-        write(Player), write(' mendapatkan kartu: '),
-        print_card(Card),
-        nl,
-        advance_turn;
-        nl,
-        write('Draw pile kosong. Tidak bisa mengambil kartu.'), nl,
-        fail
-    ).
+    sudah_aksi_utama(Player), !,
+    nl,
+    write('Aksi utama pada giliran ini sudah dilakukan.'), nl,
+    fail.
+ambilKartu :-
+    get_current_player(Player),
+    pending_draw_two(Player), !,
+    ambil_banyak_kartu(Player, 2, Cards),
+    nl,
+    write(Player), write(' mendapatkan kartu: '), print_card_list(Cards), write('.'), nl,
+    bersihkan_pending,
+    tandai_aksi_utama(Player),
+    advance_turn.
+ambilKartu :-
+    get_current_player(Player),
+    pending_wild_draw_four(Player, _, _, _), !,
+    ambil_banyak_kartu(Player, 4, Cards),
+    nl,
+    write(Player), write(' mendapatkan kartu: '), print_card_list(Cards), write('.'), nl,
+    bersihkan_pending,
+    tandai_aksi_utama(Player),
+    advance_turn.
+ambilKartu :-
+    get_current_player(Player),
+    draw_pile([_|_]), !,
+    ambil_banyak_kartu(Player, 1, [Card]),
+    nl,
+    write(Player), write(' mendapatkan kartu: '), print_card(Card), write('.'), nl,
+    tandai_aksi_utama(Player),
+    advance_turn.
+ambilKartu :-
+    nl,
+    write('Draw pile kosong. Tidak bisa mengambil kartu.'), nl,
+    fail.
+
+endGame :-
+    pemain_habis_kartu(Winner), !,
+    nl,
+    write('Permainan selesai! '), write(Winner), write(' menghabiskan semua kartunya!'), nl, nl,
+    write('Berikut perhitungan poin sisa kartu.'), nl,
+    player_names(Names),
+    buat_daftar_nilai(Names, 1, Scores),
+    print_perhitungan_poin(Scores), nl,
+    urutkan_nilai(Scores, Sorted),
+    write('Urutan pemenang:'), nl,
+    print_ranking(Sorted, 1), nl,
+    Sorted = [score(Juara, _, _, _)|_],
+    write('Selamat, '), write(Juara), write(' menjadi pemenang!'), nl,
+    reset_game_state.
+endGame :-
+    nl,
+    write('Permainan belum selesai.'), nl.
+
+pemain_habis_kartu(Player) :-
+    player_hand(Player, []), !.
+pemain_habis_kartu(Player) :-
+    player_names(Names),
+    pemain_habis_kartu_dalam_list(Names, Player).
+
+pemain_habis_kartu_dalam_list([Name|_], Name) :-
+    player_hand(Name, []), !.
+pemain_habis_kartu_dalam_list([_|Rest], Player) :-
+    pemain_habis_kartu_dalam_list(Rest, Player).
+
+buat_daftar_nilai([], _, []).
+buat_daftar_nilai([Name|Rest], Urutan, [score(Name, Points, JumlahKartu, Urutan)|Scores]) :-
+    player_hand(Name, Hand),
+    jumlah_poin_kartu(Hand, Points),
+    panjang(Hand, JumlahKartu),
+    Next is Urutan + 1,
+    buat_daftar_nilai(Rest, Next, Scores).
+
+print_perhitungan_poin([]).
+print_perhitungan_poin([score(Name, Points, _, _)|Rest]) :-
+    player_hand(Name, Hand),
+    write(Name), write(': '),
+    print_rincian_kartu(Hand, Points), nl,
+    print_perhitungan_poin(Rest).
+
+print_rincian_kartu([], _) :-
+    write('kartu habis = 0 poin'), !.
+print_rincian_kartu(Hand, Points) :-
+    print_card_list(Hand),
+    write(' = '), write(Points), write(' poin').
+
+lebih_baik(score(_, P1, _, _), score(_, P2, _, _)) :-
+    P1 < P2, !.
+lebih_baik(score(_, P, C1, _), score(_, P, C2, _)) :-
+    C1 < C2, !.
+lebih_baik(score(_, P, C, O1), score(_, P, C, O2)) :-
+    O1 < O2.
+
+urutkan_nilai([], []).
+urutkan_nilai([X|Xs], Sorted) :-
+    urutkan_nilai(Xs, SortedXs),
+    sisip_nilai(X, SortedXs, Sorted).
+
+sisip_nilai(X, [], [X]).
+sisip_nilai(X, [Y|Ys], [X,Y|Ys]) :-
+    lebih_baik(X, Y), !.
+sisip_nilai(X, [Y|Ys], [Y|Rest]) :-
+    sisip_nilai(X, Ys, Rest).
+
+print_ranking([], _).
+print_ranking([score(Name, Points, _, _)|Rest], N) :-
+    write(N), write('. '), write(Name), write(' ('), write(Points), write(' poin)'), nl,
+    N1 is N + 1,
+    print_ranking(Rest, N1).
