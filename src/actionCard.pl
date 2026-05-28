@@ -54,12 +54,14 @@ kartu_valid_dimainkan(Player, Index, Card, NewHand) :-
 kartu_valid_dengan_kondisi(kartu(hitam, wild), _, kartu(hitam, wild), _) :- !, fail.
 kartu_valid_dengan_kondisi(kartu(hitam, wild), _, _, _) :- !.
 kartu_valid_dengan_kondisi(kartu(hitam, wild_draw_four), _, kartu(hitam, wild_draw_four), _) :- !, fail.
-kartu_valid_dengan_kondisi(kartu(hitam, wild_draw_four), NewHand, TopCard, ActiveColor) :-
-    tidak_ada_kartu_cocok_wild_draw_four(NewHand, TopCard, ActiveColor), !.
+kartu_valid_dengan_kondisi(kartu(hitam, wild_draw_four), _, _, _) :- !.
+kartu_valid_dengan_kondisi(kartu(_, draw_two), _, kartu(_, draw_two), _) :- !, fail.
 kartu_valid_dengan_kondisi(Card, _, TopCard, ActiveColor) :-
     bukan_hitam(Card),
     kartu_cocok_umum(Card, TopCard, ActiveColor).
 
+playable_card(kartu(_, draw_two)) :-
+    get_top_card(kartu(_, draw_two)), !, fail.
 playable_card(Card) :-
     get_top_card(TopCard),
     get_active_color(ActiveColor),
@@ -123,11 +125,10 @@ efek_kartu(kartu(_, draw_two), _, _, _, _) :-
     nl,
     write(Target), write(' harus mengambil 2 kartu dan kehilangan giliran.'), nl,
     advance_turn.
-efek_kartu(kartu(hitam, wild_draw_four), Player, NewHand, TopBefore, ColorBefore) :-
+efek_kartu(kartu(hitam, wild_draw_four), Player, _, TopBefore, ColorBefore) :-
     bersihkan_pending,
     pemain_berikutnya(Target),
     assertz(pending_wild_draw_four(Target, Player, TopBefore, ColorBefore)),
-    (ada_kartu_cocok_wild_draw_four(NewHand, TopBefore, ColorBefore) -> true ; true),
     nl,
     write(Target), write(' dapat memilih ambilKartu atau tantang.'), nl,
     advance_turn.
