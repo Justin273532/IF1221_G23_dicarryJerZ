@@ -81,7 +81,9 @@ lihatCommand :-
     write('1. lihatCommand'), nl,
     write('2. lihatKartu'), nl,
     write('3. cekInfo'), nl,
-    write('4. tampilkanKartu'), nl.
+    write('4. tampilkanKartu'), nl,
+    write('5. saveGame'), nl,
+    write('6. loadGame'), nl.
 
 tampilkan_aksi_utama(Player) :-
     pending_draw_two(Player), !,

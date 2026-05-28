@@ -22,4 +22,5 @@
 :- include('actionCard.pl').
 :- include('tantang.pl').
 :- include('tangkap.pl').
+:- include('fileProcessing.pl').
 :- include('gameSystem.pl').
