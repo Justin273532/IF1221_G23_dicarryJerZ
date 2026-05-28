@@ -11,10 +11,14 @@
            pelanggar_uni/1,
            pending_draw_two/1,
            pending_wild_draw_four/4,
-           aksi_utama_selesai/1).
+           aksi_utama_selesai/1,
+           kartu_tersembunyi/2,
+           kartu_aksi_terakhir/4,
+           nomor_giliran/1).
 
 :- include('util.pl').
 :- include('io.pl').
+:- include('bonus.pl').
 :- include('actionCard.pl').
 :- include('tantang.pl').
 :- include('tangkap.pl').

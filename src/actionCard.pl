@@ -4,11 +4,13 @@ card_points(kartu(_, reverse), 10).
 card_points(kartu(_, draw_two), 10).
 card_points(kartu(_, wild), 20).
 card_points(kartu(_, wild_draw_four), 20).
+card_points(kartu(_, mimic), 20).
 
 kartu_cocok_umum(kartu(hitam, wild), kartu(hitam, wild), _) :- !, fail.
 kartu_cocok_umum(kartu(hitam, wild), _, _).
 kartu_cocok_umum(kartu(hitam, wild_draw_four), kartu(hitam, wild_draw_four), _) :- !, fail.
 kartu_cocok_umum(kartu(hitam, wild_draw_four), _, _).
+kartu_cocok_umum(kartu(hitam, mimic), _, _).
 kartu_cocok_umum(kartu(Color, _), _, ActiveColor) :-
     normal_color(Color),
     Color = ActiveColor, !.
@@ -55,6 +57,7 @@ kartu_valid_dengan_kondisi(kartu(hitam, wild), _, kartu(hitam, wild), _) :- !, f
 kartu_valid_dengan_kondisi(kartu(hitam, wild), _, _, _) :- !.
 kartu_valid_dengan_kondisi(kartu(hitam, wild_draw_four), _, kartu(hitam, wild_draw_four), _) :- !, fail.
 kartu_valid_dengan_kondisi(kartu(hitam, wild_draw_four), _, _, _) :- !.
+kartu_valid_dengan_kondisi(kartu(hitam, mimic), _, _, _) :- !.
 kartu_valid_dengan_kondisi(kartu(_, draw_two), _, kartu(_, draw_two), _) :- !, fail.
 kartu_valid_dengan_kondisi(Card, _, TopCard, ActiveColor) :-
     bukan_hitam(Card),
@@ -71,6 +74,7 @@ mainkan_kartu_terpilih(Player, Card, NewHand, Mode) :-
     get_top_card(TopBefore),
     get_active_color(ColorBefore),
     set_current_hand(Player, NewHand),
+    hapus_kartu_tersembunyi(Player, Card),
     set_top_card(Card),
     warna_setelah_main(Card, ColorBefore),
     nl,
@@ -88,6 +92,7 @@ warna_setelah_main(kartu(hitam, wild_draw_four), _) :-
     choose_color_for_wild(Color),
     set_active_color(Color),
     write('Warna aktif berubah menjadi '), write(Color), write('.'), nl, !.
+warna_setelah_main(kartu(hitam, mimic), _) :- !.
 warna_setelah_main(kartu(Color, _), _) :-
     set_active_color(Color).
 
@@ -109,23 +114,33 @@ efek_kartu(_, Player, _, _, _) :-
     count_cards(Player, 0), !,
     bersihkan_pending,
     endGame.
-efek_kartu(kartu(_, skip), _, _, _, _) :-
+efek_kartu(kartu(hitam, mimic), Player, _, TopBefore, ColorBefore) :-
+    efek_mimic(Player, TopBefore, ColorBefore).
+efek_kartu(kartu(Color, skip), Player, _, _, _) :-
+    simpan_aksi_terakhir(kartu(Color, skip), Player, skip),
     bersihkan_pending,
     lewati_pemain.
-efek_kartu(kartu(_, reverse), _, _, _, _) :-
+efek_kartu(kartu(Color, reverse), Player, _, _, _) :-
+    simpan_aksi_terakhir(kartu(Color, reverse), Player, reverse),
     bersihkan_pending,
     balik_arah_permainan,
     direction(Dir),
     write('Arah permainan berubah menjadi '), write(Dir), write('.'), nl,
     advance_turn.
-efek_kartu(kartu(_, draw_two), _, _, _, _) :-
+efek_kartu(kartu(Color, draw_two), Player, _, _, _) :-
+    simpan_aksi_terakhir(kartu(Color, draw_two), Player, draw_two),
     bersihkan_pending,
     pemain_berikutnya(Target),
     assertz(pending_draw_two(Target)),
     nl,
     write(Target), write(' harus mengambil 2 kartu dan kehilangan giliran.'), nl,
     advance_turn.
+efek_kartu(kartu(hitam, wild), Player, _, _, _) :-
+    simpan_aksi_terakhir(kartu(hitam, wild), Player, wild),
+    bersihkan_pending,
+    advance_turn.
 efek_kartu(kartu(hitam, wild_draw_four), Player, _, TopBefore, ColorBefore) :-
+    simpan_aksi_terakhir(kartu(hitam, wild_draw_four), Player, wild_draw_four),
     bersihkan_pending,
     pemain_berikutnya(Target),
     assertz(pending_wild_draw_four(Target, Player, TopBefore, ColorBefore)),

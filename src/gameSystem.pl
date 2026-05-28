@@ -18,6 +18,7 @@ startGame :-
     discard_color(DiscardCard, TopColor),
     assertz(active_color(TopColor)),
     assertz(direction(kanan)),
+    assertz(nomor_giliran(1)),
     store_player_hands(PlayerHands),
     nl,
     write('Urutan pemain: '), print_name_list(ShuffledNames), nl,
@@ -44,7 +45,10 @@ reset_game_state :-
     retractall(pelanggar_uni(_)),
     retractall(pending_draw_two(_)),
     retractall(pending_wild_draw_four(_, _, _, _)),
-    retractall(aksi_utama_selesai(_)).
+    retractall(aksi_utama_selesai(_)),
+    retractall(kartu_tersembunyi(_, _)),
+    retractall(kartu_aksi_terakhir(_, _, _, _)),
+    retractall(nomor_giliran(_)).
 
 get_current_player(Player) :- current_player(Player), !.
 get_current_hand(Player, Hand) :- player_hand(Player, Hand), !.
@@ -86,14 +90,23 @@ sudah_aksi_utama(Player) :-
     aksi_utama_selesai(Player), !.
 
 advance_turn :-
+    naikkan_nomor_giliran,
     maju_satu_giliran(Next),
     hapus_aksi_utama(Next),
     nl,
     write('Giliran '), write(Next), write('.'), nl.
 
 advance_turn_silent(Next) :-
+    naikkan_nomor_giliran,
     maju_satu_giliran(Next),
     hapus_aksi_utama(Next).
+
+naikkan_nomor_giliran :-
+    retract(nomor_giliran(N)), !,
+    N1 is N + 1,
+    assertz(nomor_giliran(N1)).
+naikkan_nomor_giliran :-
+    assertz(nomor_giliran(1)).
 
 maju_satu_giliran(Next) :-
     turn_order([Current, Next|Rest]),
@@ -153,9 +166,11 @@ build_deck(Deck) :-
     build_kartu_aksi(Colors, [skip, reverse, draw_two], ActionCards),
     build_kartu_repeat(4, kartu(hitam, wild), WildCards),
     build_kartu_repeat(4, kartu(hitam, wild_draw_four), WildDrawFourCards),
+    build_kartu_repeat(4, kartu(hitam, mimic), MimicCards),
     appendd(NumberCards, ActionCards, Temp1),
     appendd(Temp1, WildCards, Temp2),
-    appendd(Temp2, WildDrawFourCards, Deck).
+    appendd(Temp2, WildDrawFourCards, Temp3),
+    appendd(Temp3, MimicCards, Deck).
 
 colors([merah, kuning, hijau, biru]).
 numbers([0,1,2,3,4,5,6,7,8,9]).

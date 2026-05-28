@@ -155,3 +155,117 @@ jalankan_efek_mimic(wild, _, _, _) :-
 jalankan_efek_mimic(_, _, _, _) :-
     bersihkan_pending,
     advance_turn.
+
+
+sembunyikanKartu(Index) :-
+    Index > 0,
+    get_current_player(Player),
+    sudah_aksi_utama(Player), !,
+    nl,
+    write('Aksi utama pada giliran ini sudah dilakukan.'), nl,
+    fail.
+sembunyikanKartu(Index) :-
+    Index > 0,
+    get_current_player(Player),
+    pending_draw_two(Player), !,
+    nl,
+    write('Anda sedang terkena efek draw_two. Command valid hanya ambilKartu.'), nl,
+    fail.
+sembunyikanKartu(Index) :-
+    Index > 0,
+    get_current_player(Player),
+    pending_wild_draw_four(Player, _, _, _), !,
+    nl,
+    write('Anda sedang terkena efek wild_draw_four. Command valid hanya ambilKartu atau tantang.'), nl,
+    fail.
+sembunyikanKartu(Index) :-
+    Index > 0,
+    get_current_player(Player),
+    count_cards_terlihat(Player, Terlihat),
+    Terlihat =< 1, !,
+    nl,
+    write('Perintah sembunyikanKartu tidak valid jika pemain hanya memiliki satu kartu terlihat.'), nl,
+    fail.
+sembunyikanKartu(Index) :-
+    Index > 0,
+    get_current_player(Player),
+    get_current_hand(Player, Hand),
+    (   nth_element(Index, Hand, Card) ->
+        (   kartu_sedang_tersembunyi(Player, Card) ->
+            nl,
+            write('Kartu tersebut sudah disembunyikan.'), nl,
+            fail
+        ;   tambah_kartu_tersembunyi(Player, Card),
+            tandai_aksi_utama(Player),
+            nl,
+            write('Kartu '), print_card(Card), write(' berhasil disembunyikan.'), nl,
+            advance_turn
+        )
+    ;   nl,
+        write('Nomor urut kartu '), write(Index), write(' tidak valid.'), nl,
+        fail
+    ).
+sembunyikanKartu(_) :-
+    nl,
+    write('Nomor urut kartu harus berupa bilangan bulat positif.'), nl,
+    fail.
+
+tampilkanKartu :-
+    get_current_player(Player),
+    kartu_tersembunyi(Player, Hidden),
+    tidak_kosong(Hidden), !,
+    retractall(kartu_tersembunyi(Player, _)),
+    nl,
+    write('Kartu tersembunyi milik '), write(Player), write(' berhasil ditampilkan kembali.'), nl.
+tampilkanKartu :-
+    get_current_player(Player),
+    nl,
+    write('Tidak ada kartu tersembunyi milik '), write(Player), write('.'), nl.
+
+tambah_kartu_tersembunyi(Player, Card) :-
+    kartu_tersembunyi(Player, OldHidden), !,
+    retractall(kartu_tersembunyi(Player, _)),
+    appendd(OldHidden, [Card], NewHidden),
+    assertz(kartu_tersembunyi(Player, NewHidden)).
+tambah_kartu_tersembunyi(Player, Card) :-
+    assertz(kartu_tersembunyi(Player, [Card])).
+
+hapus_kartu_tersembunyi(Player, Card) :-
+    kartu_tersembunyi(Player, Hidden),
+    hapus_pertama(Card, Hidden, NewHidden), !,
+    retractall(kartu_tersembunyi(Player, _)),
+    simpan_list_tersembunyi_jika_ada(Player, NewHidden).
+hapus_kartu_tersembunyi(_, _).
+
+simpan_list_tersembunyi_jika_ada(_, []) :- !.
+simpan_list_tersembunyi_jika_ada(Player, Hidden) :-
+    assertz(kartu_tersembunyi(Player, Hidden)).
+
+kartu_sedang_tersembunyi(Player, Card) :-
+    kartu_tersembunyi(Player, Hidden),
+    anggota(Card, Hidden), !.
+
+ada_kartu_tersembunyi(Player) :-
+    kartu_tersembunyi(Player, Hidden),
+    tidak_kosong(Hidden), !.
+
+tidak_ada_kartu_tersembunyi(Player) :-
+    ada_kartu_tersembunyi(Player), !, fail.
+tidak_ada_kartu_tersembunyi(_).
+
+count_cards_terlihat(Player, Count) :-
+    count_cards(Player, Total),
+    jumlah_tersembunyi(Player, HiddenCount),
+    Count is Total - HiddenCount.
+
+jumlah_tersembunyi(Player, Count) :-
+    kartu_tersembunyi(Player, Hidden), !,
+    panjang(Hidden, Count).
+jumlah_tersembunyi(_, 0).
+
+print_card_dengan_status(Player, Card) :-
+    kartu_sedang_tersembunyi(Player, Card), !,
+    print_card_terlihat(Card),
+    write(' (tersembunyi)').
+print_card_dengan_status(_, Card) :-
+    print_card_terlihat(Card).
