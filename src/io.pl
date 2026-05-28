@@ -73,17 +73,28 @@ choose_color_for_wild(Color) :-
     ).
 
 lihatCommand :-
+    get_current_player(Player),
     nl,
     write('Aksi utama yang tersedia:'), nl,
-    write('1. mainkanKartu(NomorUrutKartuDiTangan)'), nl,
-    write('2. ambilKartu'), nl,
-    write('3. tantang'), nl, nl,
+    tampilkan_aksi_utama(Player), nl,
     write('Aksi pendukung yang tersedia:'), nl,
     write('1. lihatCommand'), nl,
     write('2. lihatKartu'), nl,
     write('3. cekInfo'), nl,
     write('4. uni(NomorUrutKartuDiTangan)'), nl,
     write('5. tangkap(NamaPemain)'), nl.
+
+tampilkan_aksi_utama(Player) :-
+    pending_draw_two(Player), !,
+    write('1. ambilKartu'), nl.
+tampilkan_aksi_utama(Player) :-
+    pending_wild_draw_four(Player, _, _, _), !,
+    write('1. ambilKartu'), nl,
+    write('2. tantang'), nl.
+tampilkan_aksi_utama(_) :-
+    write('1. mainkanKartu(NomorUrutKartuDiTangan)'), nl,
+    write('2. ambilKartu'), nl,
+    write('3. tantang'), nl.
 
 lihatKartu :-
     get_current_player(Player),
